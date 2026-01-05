@@ -5,5 +5,8 @@ public enum TileType {
     PROPERTY,
     TAX,
     CHANCE,
-    JAIL
+    COMMUNITY_CHEST,
+    JAIL,
+    FREE_PARKING,
+    GO_TO_JAIL
 }
