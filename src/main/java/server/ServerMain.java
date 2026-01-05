@@ -1,6 +1,8 @@
 package server;
 
 import model.GameState;
+import utils.Constants; // ایمپورت جدید
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -8,9 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ServerMain {
-    private static final int PORT = 8080;
-    private static final int MAX_PLAYERS = 4;
-    // لیستی برای نگهداری اتصال تمام بازیکنان جهت ارسال پیام همگانی
+    // استفاده از Constants به جای اعداد هاردکد شده
+    private static final int PORT = Constants.PORT;
+    private static final int MAX_PLAYERS = Constants.MAX_PLAYERS;
+
     private static List<ClientHandler> connectedClients = new ArrayList<>();
 
     public static void main(String[] args) {
@@ -20,27 +23,32 @@ public class ServerMain {
 
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server started on port " + PORT);
-            System.out.println("Waiting for 4 players...");
+            System.out.println("Waiting for " + MAX_PLAYERS + " players...");
 
             while (connectedClients.size() < MAX_PLAYERS) {
                 Socket clientSocket = serverSocket.accept();
 
-                // ساخت هندلر و اضافه کردن به لیست
                 int pId = connectedClients.size() + 1;
                 ClientHandler handler = new ClientHandler(clientSocket, pId, gameEngine);
                 connectedClients.add(handler);
                 handler.start();
 
-                String playerName = "Player " + pId;
-                GameState.getInstance().addPlayer(pId, playerName);
-                System.out.println(playerName + " connected.");
+                GameState.getInstance().addPlayer(pId, "Player " + pId);
+                System.out.println("Player " + pId + " connected.");
 
-                // اگر ۴ نفر تکمیل شدند
                 if (connectedClients.size() == MAX_PLAYERS) {
                     System.out.println("Game Full! Starting...");
                     GameState.getInstance().startGame();
-                    broadcast("GAME_STARTED"); // خبر دادن به همه کلاینت‌ها
-                    broadcast("TURN:1"); // اعلام نوبت نفر اول
+
+                    broadcast("GAME_STARTED");
+
+                    // ارسال وضعیت اولیه (پول و مکان)
+                    for (int i = 1; i <= MAX_PLAYERS; i++) {
+                        model.Player p = GameState.getInstance().getPlayer(i);
+                        broadcast("STATS:" + p.getId() + ":" + p.getName() + ":" + p.getMoney() + ":" + p.getPosition());
+                    }
+
+                    broadcast("TURN:1");
                 }
             }
         } catch (IOException e) {
@@ -48,7 +56,6 @@ public class ServerMain {
         }
     }
 
-    // متد کمکی برای ارسال پیام به همه
     public static void broadcast(String msg) {
         for (ClientHandler client : connectedClients) {
             client.sendMessage(msg);
